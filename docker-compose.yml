@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-lightuser}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-lightpass}
+      POSTGRES_DB: ${PGDATABASE:-lightquota}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${PG_PORT_HOST:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-lightuser} -d ${PGDATABASE:-lightquota}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${PGUSER:-lightuser}
+      PGPASSWORD: ${PGPASSWORD:-lightpass}
+      PGDATABASE: ${PGDATABASE:-lightquota}
+      SESSION_SECRET: ${SESSION_SECRET:-please-change-this-secret}
+      TZ: ${TZ:-Asia/Shanghai}
+      PORT: 3000
+      CONSERVATOR_USER: ${CONSERVATOR_USER:-conservator}
+      CONSERVATOR_PASSWORD: ${CONSERVATOR_PASSWORD:-conservator123}
+      INSTALLER_USER: ${INSTALLER_USER:-installer}
+      INSTALLER_PASSWORD: ${INSTALLER_PASSWORD:-installer123}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+volumes:
+  pgdata:

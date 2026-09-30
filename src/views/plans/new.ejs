@@ -1,0 +1,37 @@
+<%- include('../partials/header') %>
+<h1>提交展出计划</h1>
+<form method="post" action="/plans" class="card form narrow">
+  <label>展品 *
+    <select name="exhibit_id" required>
+      <option value="">请选择…</option>
+      <% exhibits.forEach(function(e){ %>
+        <option value="<%= e.id %>" <%= String(values.exhibit_id) === String(e.id) ? 'selected' : '' %>><%= e.code %> · <%= e.title %></option>
+      <% }) %>
+    </select>
+  </label>
+  <div class="grid-2">
+    <label>展出开始日期 *
+      <input type="date" name="start_date" value="<%= values.start_date %>" required>
+    </label>
+    <label>展出结束日期 *
+      <input type="date" name="end_date" value="<%= values.end_date %>" required>
+    </label>
+  </div>
+  <div class="grid-2">
+    <label>每日开灯时间 *
+      <input type="time" name="lights_on" value="<%= values.lights_on %>" required>
+    </label>
+    <label>每日关灯时间 *
+      <input type="time" name="lights_off" value="<%= values.lights_off %>" required>
+    </label>
+  </div>
+  <p class="muted small">每日开灯时段不支持跨夜（如 18:00–次日 02:00）；结束必须晚于开始。</p>
+  <label>预计照度（lux，必须为正数）*
+    <input type="number" name="estimated_lux" value="<%= values.estimated_lux %>" min="0" step="0.01" required>
+  </label>
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">提交审批</button>
+    <a href="/plans" class="btn btn-ghost">返回</a>
+  </div>
+</form>
+<%- include('../partials/footer') %>

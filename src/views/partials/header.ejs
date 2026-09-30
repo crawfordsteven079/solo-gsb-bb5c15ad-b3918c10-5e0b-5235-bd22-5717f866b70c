@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= typeof title !== 'undefined' ? title : '纸质展品光照额度管理' %></title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">📜 纸质展品光照额度管理</a>
+  <nav>
+    <% if (currentUser) { %>
+      <a href="/exhibits">展品与额度</a>
+      <a href="/plans">展出计划<% if (currentUser.role === 'conservator') { %>审批<% } %></a>
+      <% if (currentUser.role === 'conservator') { %>
+        <a href="/measurements/new">录入实测</a>
+      <% } %>
+      <span class="user"><%= currentUser.display_name %>（<%= roleName(currentUser.role) %>）</span>
+      <form method="post" action="/logout" class="inline">
+        <button type="submit" class="btn btn-ghost">退出</button>
+      </form>
+    <% } %>
+  </nav>
+</header>
+<main class="container">
+  <% if (errors && errors.length) { %>
+    <div class="alerts">
+      <% errors.forEach(function(msg){ var lines = String(msg).split('\n'); %>
+        <div class="alert alert-error">
+          <% lines.forEach(function(line, i){ %><% if (i>0) { %><br><% } %><%= line %><% }) %>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+  <% if (successes && successes.length) { %>
+    <div class="alerts">
+      <% successes.forEach(function(msg){ %>
+        <div class="alert alert-success"><%= msg %></div>
+      <% }) %>
+    </div>
+  <% } %>

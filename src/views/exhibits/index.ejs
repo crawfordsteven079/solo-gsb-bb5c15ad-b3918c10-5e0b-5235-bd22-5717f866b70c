@@ -1,0 +1,46 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>展品与年度额度</h1>
+  <% if (currentUser.role === 'conservator') { %>
+    <a class="btn btn-primary" href="/exhibits/new">登记新展品</a>
+  <% } %>
+</div>
+
+<% if (!exhibits.length) { %>
+  <div class="card muted">暂无展品。<% if (currentUser.role === 'conservator') { %>请先登记展品。<% } %></div>
+<% } %>
+
+<% exhibits.forEach(function(ex){ %>
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2><a href="/exhibits/<%= ex.id %>"><%= ex.code %> · <%= ex.title %></a></h2>
+        <span class="muted"><%= ex.medium || '纸质展品' %></span>
+      </div>
+      <% if (ex.overCount > 0) { %><span class="badge badge-danger"><%= ex.overCount %> 个年度超限</span><% } %>
+    </div>
+    <% if (ex.years.length) { %>
+      <table class="table compact">
+        <thead><tr><th>年度</th><th>年度上限</th><th>已占用</th><th>剩余额度</th><th>状态</th></tr></thead>
+        <tbody>
+        <% ex.years.forEach(function(y){ var over = y.limit !== null && y.used > y.limit; %>
+          <tr class="<%= over ? 'row-danger' : '' %>">
+            <td><%= y.year %></td>
+            <td><%= y.limit === null ? '未登记' : fmt(y.limit) %></td>
+            <td><%= fmt(y.used) %></td>
+            <td><%= y.limit === null ? '—' : fmt(y.remaining) %></td>
+            <td>
+              <% if (y.limit === null) { %><span class="badge badge-warn">缺上限</span>
+              <% } else if (over) { %><span class="badge badge-danger">超额 <%= fmt(y.used - y.limit) %></span>
+              <% } else { %><span class="badge badge-ok">正常</span><% } %>
+            </td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p class="muted">尚无占用记录；保管员可在详情页登记年度上限。</p>
+    <% } %>
+  </div>
+<% }) %>
+<%- include('../partials/footer') %>

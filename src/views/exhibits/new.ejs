@@ -1,0 +1,18 @@
+<%- include('../partials/header') %>
+<h1>登记新展品</h1>
+<form method="post" action="/exhibits" class="card form narrow">
+  <label>展品编号 *
+    <input type="text" name="code" value="<%= values.code %>" required placeholder="如 P-001">
+  </label>
+  <label>名称 *
+    <input type="text" name="title" value="<%= values.title %>" required placeholder="如 宋代写经卷">
+  </label>
+  <label>材质/说明
+    <input type="text" name="medium" value="<%= values.medium %>" placeholder="如 纸本墨书">
+  </label>
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">保存</button>
+    <a href="/exhibits" class="btn btn-ghost">返回</a>
+  </div>
+</form>
+<%- include('../partials/footer') %>

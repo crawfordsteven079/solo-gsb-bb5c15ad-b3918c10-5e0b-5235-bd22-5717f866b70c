@@ -1,0 +1,38 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>展出计划<% if (isConservator) { %>与审批<% } %></h1>
+  <% if (currentUser.role === 'installer') { %>
+    <a class="btn btn-primary" href="/plans/new">提交新计划</a>
+  <% } %>
+</div>
+
+<% if (!plans.length) { %><div class="card muted">暂无计划。</div><% } %>
+
+<table class="table card">
+  <thead>
+    <tr><th>#</th><th>展品</th><th>展期</th><th>每日开灯</th><th>预计照度</th><th>按年预计剂量（lux·h）</th><th>状态</th><th>操作</th></tr>
+  </thead>
+  <tbody>
+  <% plans.forEach(function(p){ %>
+    <tr>
+      <td>#<%= p.id %></td>
+      <td><a href="/exhibits/<%= p.exhibit_id %>"><%= p.exhibit_code %></a><div class="small muted"><%= p.exhibit_title %></div></td>
+      <td><%= p.start_date %><br><span class="muted small">至 <%= p.end_date %></span></td>
+      <td><%= String(p.lights_on).slice(0,5) %>–<%= String(p.lights_off).slice(0,5) %></td>
+      <td><%= fmt(p.estimated_lux) %> lux</td>
+      <td class="small">
+        <% p.doseRows.forEach(function(r){ %><div><%= r.year %>: <%= fmt(r.dose) %></div><% }) %>
+      </td>
+      <td>
+        <% if (p.status === 'pending') { %><span class="badge badge-warn">待审批</span>
+        <% } else if (p.status === 'approved') { %><span class="badge badge-ok">已批准</span>
+        <% } else if (p.status === 'pending_review') { %><span class="badge badge-danger">待复核</span>
+        <% } else { %><span class="badge badge-muted">已拒绝/撤销</span><% } %>
+        <% if (p.review_reason) { %><div class="small muted"><%= p.review_reason %></div><% } %>
+      </td>
+      <td><a class="btn btn-ghost btn-sm" href="/plans/<%= p.id %>">详情</a></td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+<%- include('../partials/footer') %>

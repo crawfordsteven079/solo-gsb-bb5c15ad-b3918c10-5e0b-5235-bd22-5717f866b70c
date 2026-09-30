@@ -1,0 +1,41 @@
+<%- include('../partials/header') %>
+<h1>录入展后实测</h1>
+<form method="post" action="/measurements" class="card form narrow">
+  <label>所属已批准计划 *
+    <select name="plan_id" required onchange="if(this.value){window.location.href='/measurements/new?plan_id='+this.value;}">
+      <option value="">请选择…</option>
+      <% plans.forEach(function(p){ %>
+        <option value="<%= p.id %>" <%= String(values.plan_id) === String(p.id) ? 'selected' : '' %>>
+          #<%= p.id %> · <%= p.exhibit_code %> · <%= p.start_date %> 至 <%= p.end_date %> · 每日 <%= String(p.lights_on).slice(0,5) %>–<%= String(p.lights_off).slice(0,5) %>
+          <%= p.status === 'pending_review' ? '（待复核）' : '' %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
+  <% if (selected) { %>
+    <p class="muted small">该计划展期 <%= selected.start_date %> 至 <%= selected.end_date %>，合法实测必须在其展出日期的每日 <%= String(selected.lights_on).slice(0,5) %>–<%= String(selected.lights_off).slice(0,5) %> 开灯时段内。</p>
+  <% } %>
+  <label>实测日期 *
+    <input type="date" name="measured_on" value="<%= values.measured_on %>" required>
+  </label>
+  <div class="grid-2">
+    <label>开始时间 *
+      <input type="time" name="start_time" value="<%= values.start_time %>" required>
+    </label>
+    <label>结束时间 *
+      <input type="time" name="end_time" value="<%= values.end_time %>" required>
+    </label>
+  </div>
+  <p class="muted small">实测时段不支持跨夜；结束必须晚于开始。</p>
+  <label>实测照度（lux，必须为正数）*
+    <input type="number" name="actual_lux" value="<%= values.actual_lux %>" min="0" step="0.01" required>
+  </label>
+  <label>备注
+    <input type="text" name="note" value="<%= values.note %>">
+  </label>
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">保存（待确认）</button>
+    <a href="/plans" class="btn btn-ghost">返回</a>
+  </div>
+</form>
+<%- include('../partials/footer') %>

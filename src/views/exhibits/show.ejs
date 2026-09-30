@@ -1,0 +1,136 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <div>
+    <h1><%= exhibit.code %> · <%= exhibit.title %></h1>
+    <span class="muted"><%= exhibit.medium || '纸质展品' %> · 登记人：<%= exhibit.creator_name || '—' %></span>
+  </div>
+  <div class="actions">
+    <% if (currentUser.role === 'installer') { %>
+      <a class="btn btn-primary" href="/plans/new?exhibit_id=<%= exhibit.id %>">提交展出计划</a>
+    <% } %>
+    <a class="btn btn-ghost" href="/exhibits">返回列表</a>
+  </div>
+</div>
+
+<section class="card">
+  <h2>各自然年剩余额度与占用来源</h2>
+  <% if (!years.length) { %><p class="muted">暂无年度上限，也无占用。</p><% } %>
+  <% years.forEach(function(y){
+       var limitMissing = y.limit === null;
+       var over = !limitMissing && y.total > y.limit; %>
+    <div class="year-block <%= over ? 'year-over' : '' %>">
+      <div class="year-head">
+        <strong><%= y.year %> 年</strong>
+        <% if (limitMissing) { %><span class="badge badge-warn">未登记上限</span><% } %>
+        <% if (over) { %><span class="badge badge-danger">超额 <%= fmt(y.total - y.limit) %> lux·h</span><% } %>
+        <span class="muted">
+          上限 <%= limitMissing ? '—' : fmt(y.limit) %> ·
+          已占用 <%= fmt(y.total) %>（实测 <%= fmt(y.measured) %> + 估算剩余 <%= fmt(y.estimatedRemaining) %>）·
+          剩余 <%= limitMissing ? '—' : fmt(y.remaining) %> lux·h
+        </span>
+      </div>
+      <% if (y.sources.length) { %>
+        <ul class="sources">
+          <% y.sources.forEach(function(s){ %>
+            <li class="src-<%= s.type %>">
+              <span class="badge <%= s.type === 'measured' ? 'badge-info' : 'badge-muted' %>"><%= s.type === 'measured' ? '实测' : '估算' %></span>
+              <%= s.note %> — <strong><%= fmt(s.amount) %></strong> lux·h
+            </li>
+          <% }) %>
+        </ul>
+      <% } else { %><p class="muted small">本年暂无占用。</p><% } %>
+    </div>
+  <% }) %>
+</section>
+
+<% if (currentUser.role === 'conservator') { %>
+<section class="card">
+  <h2>登记/更新年度照度时数上限</h2>
+  <form method="post" action="/exhibits/<%= exhibit.id %>/limits" class="form inline-form">
+    <label>年度
+      <input type="number" name="year" min="1900" max="2999" value="<%= new Date().getFullYear() %>" required>
+    </label>
+    <label>年度上限（lux·h）
+      <input type="number" name="max_dose" min="0" step="0.01" placeholder="如 50000" required>
+    </label>
+    <button type="submit" class="btn btn-primary">保存上限</button>
+  </form>
+  <% if (limits.length) { %>
+    <table class="table compact">
+      <thead><tr><th>年度</th><th>上限（lux·h）</th><th>更新时间</th></tr></thead>
+      <tbody>
+      <% limits.forEach(function(l){ %>
+        <tr><td><%= l.year %></td><td><%= fmt(l.max_dose) %></td><td class="muted"><%= l.updated_at %></td></tr>
+      <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+<% } %>
+
+<section class="card">
+  <h2>展出计划</h2>
+  <% if (!plans.length) { %><p class="muted">暂无计划。</p><% } %>
+  <table class="table">
+    <thead>
+      <tr><th>#</th><th>展期</th><th>每日开灯</th><th>预计照度</th><th>按年预计剂量</th><th>状态</th><th></th></tr>
+    </thead>
+    <tbody>
+    <% plans.forEach(function(p){ %>
+      <tr>
+        <td>#<%= p.id %></td>
+        <td><%= p.start_date %> ～ <%= p.end_date %></td>
+        <td><%= p.lights_on.slice(0,5) %>–<%= p.lights_off.slice(0,5) %></td>
+        <td><%= fmt(p.estimated_lux) %> lux</td>
+        <td class="small">
+          <% p.doseRows.forEach(function(r){ %>
+            <div><%= r.year %>: <%= fmt(r.dose) %> lux·h</div>
+          <% }) %>
+        </td>
+        <td>
+          <% if (p.status === 'pending') { %><span class="badge badge-warn">待审批</span>
+          <% } else if (p.status === 'approved') { %><span class="badge badge-ok">已批准</span>
+          <% } else if (p.status === 'pending_review') { %><span class="badge badge-danger">待复核</span>
+          <% } else { %><span class="badge badge-muted">已拒绝/撤销</span><% } %>
+          <% if (p.review_reason) { %><div class="small muted"><%= p.review_reason %></div><% } %>
+        </td>
+        <td><a class="btn btn-ghost btn-sm" href="/plans/<%= p.id %>">详情</a></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>实测记录</h2>
+  <% if (!measurements.length) { %><p class="muted">暂无实测。展后由保管员在计划详情中录入。</p><% } %>
+  <table class="table">
+    <thead>
+      <tr><th>#</th><th>所属计划</th><th>日期</th><th>时段</th><th>实测照度</th><th>剂量</th><th>状态</th></tr>
+    </thead>
+    <tbody>
+    <% measurements.forEach(function(m){
+         var d = (function(){
+           var s = String(m.start_time).slice(0,5), e = String(m.end_time).slice(0,5);
+           var sm = Number(s.slice(0,2))*60+Number(s.slice(3,5));
+           var em = Number(e.slice(0,2))*60+Number(e.slice(3,5));
+           return Number(m.actual_lux) * (em-sm)/60;
+         })(); %>
+      <tr>
+        <td>#<%= m.id %></td>
+        <td>#<%= m.plan_id %></td>
+        <td><%= m.measured_on %></td>
+        <td><%= String(m.start_time).slice(0,5) %>–<%= String(m.end_time).slice(0,5) %></td>
+        <td><%= fmt(m.actual_lux) %> lux</td>
+        <td><%= fmt(d) %> lux·h</td>
+        <td>
+          <% if (m.status === 'confirmed') { %><span class="badge badge-info">已确认</span>
+          <% } else { %><span class="badge badge-warn">待确认</span><% } %>
+          <% if (m.note) { %><div class="small muted"><%= m.note %></div><% } %>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</section>
+<%- include('../partials/footer') %>

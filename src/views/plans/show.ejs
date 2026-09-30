@@ -1,0 +1,127 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <div>
+    <h1>展出计划 #<%= plan.id %></h1>
+    <span class="muted">
+      <a href="/exhibits/<%= plan.exhibit_id %>"><%= plan.exhibit_code %> · <%= plan.exhibit_title %></a>
+      · 提交人：<%= plan.creator_name || '—' %>
+    </span>
+  </div>
+  <a class="btn btn-ghost" href="/plans">返回列表</a>
+</div>
+
+<section class="card">
+  <h2>计划信息</h2>
+  <table class="table compact">
+    <tbody>
+      <tr><th>状态</th><td>
+        <% if (plan.status === 'pending') { %><span class="badge badge-warn">待审批</span>
+        <% } else if (plan.status === 'approved') { %><span class="badge badge-ok">已批准</span>
+        <% } else if (plan.status === 'pending_review') { %><span class="badge badge-danger">待复核</span>
+        <% } else { %><span class="badge badge-muted">已拒绝/撤销</span><% } %>
+        <% if (plan.approver_name) { %> 审批人：<%= plan.approver_name %><% } %>
+        <% if (plan.review_reason) { %><div class="small"><%= plan.review_reason %></div><% } %>
+      </td></tr>
+      <tr><th>展期</th><td><%= plan.start_date %> 至 <%= plan.end_date %></td></tr>
+      <tr><th>每日开灯时段</th><td><%= String(plan.lights_on).slice(0,5) %> – <%= String(plan.lights_off).slice(0,5) %></td></tr>
+      <tr><th>预计照度</th><td><%= fmt(plan.estimated_lux) %> lux</td></tr>
+    </tbody>
+  </table>
+
+  <h3>按自然年拆分的预计剂量</h3>
+  <table class="table compact">
+    <thead><tr><th>年度</th><th>预计剂量（lux·h）</th></tr></thead>
+    <tbody>
+      <% plan.doseRows.forEach(function(r){ %>
+        <tr><td><%= r.year %></td><td><%= fmt(r.dose) %></td></tr>
+      <% }) %>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>批准前额度试算</h2>
+  <table class="table compact">
+    <thead><tr><th>年度</th><th>上限</th><th>其他计划+已确认实测已占用</th><th>本计划新增</th><th>批准后合计</th><th>超额</th></tr></thead>
+    <tbody>
+      <% preview.yearRows.forEach(function(r){ var over = r.limit !== null && r.projected > r.limit; %>
+        <tr class="<%= r.limit === null ? 'row-warn' : (over ? 'row-danger' : '') %>">
+          <td><%= r.year %></td>
+          <td><%= r.limit === null ? '未登记' : fmt(r.limit) %></td>
+          <td><%= fmt(r.current) %></td>
+          <td><%= fmt(r.addDose) %></td>
+          <td><%= fmt(r.projected) %></td>
+          <td><%= r.limit === null ? '无法核算' : (over ? fmt(r.excess) : '0') %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% if (preview.ok) { %>
+    <p class="badge badge-ok">试算通过：无时间重叠，各年度均不超限。</p>
+  <% } else { %>
+    <ul class="problem-list">
+      <% preview.problems.forEach(function(p){ %><li class="preline"><%= p %></li><% }) %>
+    </ul>
+  <% } %>
+
+  <% if (currentUser.role === 'conservator' && (plan.status === 'pending' || plan.status === 'pending_review')) { %>
+    <div class="actions">
+      <form method="post" action="/plans/<%= plan.id %>/approve" class="inline">
+        <button type="submit" class="btn btn-primary" <%= preview.ok ? '' : '' %>>批准</button>
+      </form>
+      <form method="post" action="/plans/<%= plan.id %>/reject" class="inline" onsubmit="return confirm('确定拒绝该计划？');">
+        <input type="text" name="reason" placeholder="拒绝原因（可选）" class="reason-input">
+        <button type="submit" class="btn btn-danger">拒绝</button>
+      </form>
+    </div>
+    <p class="muted small">说明：批准在数据库事务中对展品加行级锁执行，同展品并发审批将串行处理，超限或时间重叠一律不会入库为“已批准”。</p>
+  <% } %>
+  <% if (currentUser.role === 'installer' && plan.status === 'pending') { %>
+    <form method="post" action="/plans/<%= plan.id %>/cancel" class="inline" onsubmit="return confirm('撤销该待审批计划？');">
+      <button type="submit" class="btn btn-ghost">撤销提交</button>
+    </form>
+  <% } %>
+</section>
+
+<section class="card">
+  <h2>计划内实测记录</h2>
+  <% if (currentUser.role === 'conservator' && (plan.status === 'approved' || plan.status === 'pending_review')) { %>
+    <p><a class="btn btn-primary" href="/measurements/new?plan_id=<%= plan.id %>">录入该计划实测</a></p>
+  <% } %>
+  <% if (!measurements.length) { %><p class="muted">暂无实测记录。</p><% } %>
+  <table class="table compact">
+    <thead><tr><th>#</th><th>日期</th><th>时段</th><th>照度(lux)</th><th>剂量(lux·h)</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>
+    <% measurements.forEach(function(m){
+         var s = String(m.start_time).slice(0,5), e = String(m.end_time).slice(0,5);
+         var sm = Number(s.slice(0,2))*60+Number(s.slice(3,5));
+         var em = Number(e.slice(0,2))*60+Number(e.slice(3,5));
+         var d = Number(m.actual_lux) * (em-sm)/60; %>
+      <tr>
+        <td>#<%= m.id %></td>
+        <td><%= m.measured_on %></td>
+        <td><%= s %>–<%= e %></td>
+        <td><%= fmt(m.actual_lux) %></td>
+        <td><%= fmt(d) %></td>
+        <td>
+          <% if (m.status === 'confirmed') { %><span class="badge badge-info">已确认</span>
+            <div class="small muted">确认人：<%= m.confirmer_name || '—' %></div>
+          <% } else { %><span class="badge badge-warn">待确认</span><% } %>
+          <% if (m.note) { %><div class="small muted"><%= m.note %></div><% } %>
+        </td>
+        <td>
+          <% if (currentUser.role === 'conservator' && m.status === 'recorded') { %>
+            <form method="post" action="/measurements/<%= m.id %>/confirm" class="inline">
+              <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('确认后该时段以实测替代估算；确认操作不可撤销。');">确认</button>
+            </form>
+            <form method="post" action="/measurements/<%= m.id %>/delete" class="inline">
+              <button type="submit" class="btn btn-ghost btn-sm">删除</button>
+            </form>
+          <% } %>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</section>
+<%- include('../partials/footer') %>
